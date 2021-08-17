@@ -22,3 +22,12 @@ Breakpoint 1 at 0x16b9: file box.h, line 43.
 Links:
 https://github.com/QMonkey/Xlib-demo/blob/master/src/simple-drawing.c     
 https://github.com/QMonkey/Xlib-demo/blob/master/src/color-drawing.c     
+
+
+https://github.com/DanZaidan/pong_learn_programming/blob/master/My_First_Cpp_Game/win32_platform.cpp#L142     
+https://github.com/DanZaidan/pong_learn_programming/blob/master/My_First_Cpp_Game/game.cpp#L16     
+https://www.youtube.com/watch?v=gFBToWRjDZ4&list=PL7Ej6SUky135IAAR3PFCFyiVwanauRqj3&index=6     
+
+
+https://github.com/HandmadeHero/linux/blob/1e5ef3caed26520cf3b008cb9a8946c7e158e6c9/code/linux_handmade.cpp#L2433     
+https://github.com/HandmadeHero/linux/blob/1e5ef3caed26520cf3b008cb9a8946c7e158e6c9/code/linux_handmade.cpp#L2218     

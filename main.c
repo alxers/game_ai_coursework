@@ -14,6 +14,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <x86intrin.h>
 #include "shapes.c"
 
 // Make mapping so that it's possible to use RGB in Xlib
@@ -23,10 +24,10 @@ unsigned long _rgb(int r, int g, int b) {
 
 int w_width = 800; // 400
 int w_height = 600; // 200
-int gameTime = 600000; // 1000000 = 1 sec
-int randTime = 3000000;
+// int MonitorRefreshHz = 60;
+// float GameUpdateHz = (float)(MonitorRefreshHz);
+float GameUpdateHz = 60.0;
 
-int result;
 struct timespec tp;
 clockid_t clk_id;
 
@@ -69,31 +70,30 @@ void drawCircle() {
     XFillArc(disp, win, DefaultGC(disp, screen), 50-(30/2), 100-(30/2), 30, 30, 0, 360*64);
 }
 
-// void draw() {
-//     for (int j = w_height - 1; j >= 0; --j) {
-//         for (int i = 0; i < w_width; ++i) {
-//             int ir = 0;
-//             int ig = 0;
-//             int ib = 0;
-//             // Set colors
-//             XSetForeground(disp, DefaultGC(disp, screen), _rgb(ir, ig, ib));
-//             // Actually draw a pixel at (i, j) coords
-//             // TODO: check if XDrawPoints() will be faster
-//             // in that case prepare array of points
+struct timespec
+LinuxGetWallClock()
+{
+    struct timespec Clock;
+    clock_gettime(CLOCK_MONOTONIC, &Clock);
+    return Clock;
+}
 
-//             // We use "height - j" because otherwise the image would be flipped vertically
-//             XDrawPoint(disp, win, DefaultGC(disp, screen), i, w_height - j);
-//         }
-//     }
-// }
+float
+LinuxGetSecondsElapsed(struct timespec Start, struct timespec End)
+{
+    return ((float)(End.tv_sec - Start.tv_sec)
+            + ((float)(End.tv_nsec - Start.tv_nsec) * 1e-9f));
+}
+
+int
+RoundReal32ToInt32(float Real32)
+{
+    int Result = _mm_cvtss_si32(_mm_set_ss(Real32));
+    return(Result);
+}
 
 
 int main(void) {
-    // int clock_gettime(clockid_t clk_id, struct timespec *tp);
-    result = clock_gettime(clk_id, &tp);
-    printf("result: %i\n", result);
-    printf("tp.tv_sec: %lld\n", tp.tv_sec);
-    printf("tp.tv_nsec: %ld\n", tp.tv_nsec);
     // X window setup
     XEvent event;
 
@@ -123,10 +123,34 @@ int main(void) {
     evt.xexpose.count = 0;
     // end X window setup
 
+    // Timer
+    float deltaTime = 0.016666f;
+    struct timespec LastCounter = LinuxGetWallClock();
+    struct timespec FlipWallClock = LinuxGetWallClock();
+    uint ExpectedFramesPerUpdate = 1;
+    float TargetSecondsPerFrame = (float)ExpectedFramesPerUpdate / (float)GameUpdateHz;
+    // end Timer
+
 
     while (1) {
         // XClearWindow(disp, win);
-        randTime -= 100;
+        struct timespec WorkCounter = LinuxGetWallClock();
+        float WorkSecondsElapsed = LinuxGetSecondsElapsed(LastCounter, WorkCounter);
+        
+        float SecondsElapsedForFrame = WorkSecondsElapsed;
+        if (SecondsElapsedForFrame < TargetSecondsPerFrame)
+        {
+            uint SleepUs = (uint)(0.99e6f * (TargetSecondsPerFrame - SecondsElapsedForFrame));
+            usleep(SleepUs);
+            while (SecondsElapsedForFrame < TargetSecondsPerFrame)
+            {
+                SecondsElapsedForFrame = LinuxGetSecondsElapsed(LastCounter, LinuxGetWallClock());
+            }
+        }
+        else
+        {
+            // Missed frame rate
+        }
 
         // drawRect();
         // if (randTime > 0) {
@@ -139,13 +163,24 @@ int main(void) {
         if (event.type == Expose) {
             drawCircle();
 
-            if (randTime == 0) {
-                drawRect();
-                printf("%d\n", randTime);
-            }
+            drawRect();
+
             // Send "Expose" event again in order to redraw
             XSendEvent(disp, win, 0, ExposureMask, &evt);
         }
+
+        FlipWallClock = LinuxGetWallClock();
+        struct timespec EndCounter = LinuxGetWallClock();
+        float MeasuredSecondsPerFrame = LinuxGetSecondsElapsed(LastCounter, EndCounter);
+        float ExactTargetFramesPerUpdate = MeasuredSecondsPerFrame*GameUpdateHz;
+
+        // Not sure they are needed
+        // uint NewExpectedFramesPerUpdate = RoundReal32ToInt32(ExactTargetFramesPerUpdate);
+        // ExpectedFramesPerUpdate = NewExpectedFramesPerUpdate;
+        //
+
+        TargetSecondsPerFrame = MeasuredSecondsPerFrame;
+        LastCounter = EndCounter;
     }
 
     XCloseDisplay(disp);
