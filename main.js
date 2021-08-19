@@ -1,3 +1,5 @@
+//https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript/Finishing_up
+
 // Declare as variable
 let canvas;
 let ctx;
@@ -11,6 +13,11 @@ var maxCircles = 12;
 var existingCircles = [];
 // end Circles variables
 
+// Vehicle variables
+var vehicleStartX;
+var vehicleStartY;
+// end Vehicle variables
+
 // Listen to the onLoad event
 window.onload = init;
 
@@ -19,8 +26,12 @@ function init() {
   canvas = document.getElementById('ai');
   ctx = canvas.getContext('2d');
 
+  vehicleStartX = randFromTo(20, canvas.width - 20);
+  vehicleStartY = randFromTo(20, canvas.height - 20);
+
   // Request an animation frame for the first time
   // The gameLoop() function will be called as a callback of this request
+  // https://developer.mozilla.org/en-US/docs/Games/Anatomy#building_a_more_optimized_main_loop_in_javascript
   window.requestAnimationFrame(gameLoop);
 }
 
@@ -45,21 +56,27 @@ function gameLoop(timeStamp) {
 function draw(timeStamp) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  drawRect();
-  drawCircles(timeStamp / 1000);
+  var ts = timeStamp / 1000;
+  drawVehicle(ts);
+  drawCircles(ts);
 }
 
 
 // Helper
 
-function drawRect() {
-  // Get a random color, red or blue
+function drawVehicle(ts) {
   ctx.fillStyle = '#ff8080';
-  // ctx.fillStyle = Math.random() > 0.5 ? '#ff8080' : '#0099b0';
-
-  // Draw a rectangle on the canvas
-  ctx.fillRect(100, 50, 200, 175);
+  ctx.fillRect(vehicleStartX, vehicleStartY, 10, 30);
 }
+
+// function drawRect() {
+//   // Get a random color, red or blue
+//   ctx.fillStyle = '#ff8080';
+//   // ctx.fillStyle = Math.random() > 0.5 ? '#ff8080' : '#0099b0';
+
+//   // Draw a rectangle on the canvas
+//   ctx.fillRect(100, 50, 200, 175);
+// }
 
 function drawCircle(x, y, type) {
   var color = '#880000';
@@ -75,7 +92,7 @@ function drawCircle(x, y, type) {
   ctx.closePath();
 }
 
-function drawCircles(timeStamp) {
+function drawCircles(ts) {
   if (randFromTo(0, 1000) > 993 && existingCircles.length < maxCircles) {
     existingCircles.push(createCircle());
   }
@@ -88,8 +105,8 @@ function drawCircles(timeStamp) {
 
   for (var i = 0; i < existingCircles.length; i++) {
     var currCircle = existingCircles[i];
-    currCircle.tStart ||= timeStamp;
-    if (timeStamp - currCircle.tStart <= currCircle.lifetime) {
+    currCircle.tStart ||= ts;
+    if (ts - currCircle.tStart <= currCircle.lifetime) {
       drawCircle(currCircle.x, currCircle.y, currCircle.type);
     } else {
       // existingCircles.splice(i, 1);
