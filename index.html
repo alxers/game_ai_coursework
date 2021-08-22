@@ -13,11 +13,14 @@
       //https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript/Finishing_up
 
       // Declare as variable
-      let canvas;
-      let ctx;
-      let secondsPassed;
-      let oldTimeStamp;
-      let fps;
+      var canvas;
+      var ctx;
+      var secondsPassed;
+      var oldTimeStamp;
+      var fps;
+
+      var dx = 0.2;
+      var dy = -0.2;
 
       // Circles variables
       var circleRadius = 10;
@@ -25,12 +28,24 @@
       var existingCircles = [];
       // end Circles variables
 
-      // Vehicle variables
-      var vehicleX;
-      var vehicleY;
-      var vehicleWidth = 150; // 10
-      var vehicleHeight = 150; // 30
-      // end Vehicle variables
+      // Vehicle object
+      // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/rotate
+      var vehicle = {
+        x: 0,
+        y: 0,
+        width: 20,
+        height: 20,
+        velocity: 0,
+        mass: 5,
+        maxSpeed: 20,
+        maxForce: 4
+      };
+      // end Vehicle object
+
+
+      //
+      //
+
 
       // Listen to the onLoad event
       window.onload = init;
@@ -40,8 +55,8 @@
         canvas = document.getElementById('ai');
         ctx = canvas.getContext('2d');
 
-        vehicleX = randFromTo(20, canvas.width - 20);
-        vehicleY = randFromTo(20, canvas.height - 20);
+        vehicle.x = randFromTo(20, canvas.width - 20);
+        vehicle.y = randFromTo(20, canvas.height - 20);
 
         // Request an animation frame for the first time
         // The gameLoop() function will be called as a callback of this request
@@ -76,12 +91,35 @@
         collisionDetection();
       }
 
+      // Vehicle physics
+
+      function updateVehicle(ts) {
+        // vehicle.force = calculateSteeringForce();
+        // vehicle.acceleration = vehicle.force / vehicle.mass;
+        // // Check timeStamp here, should probably be time elapsed from previous frame?
+        // // Originally it's m_TimeElapsed = (m_CurrentTime - m_LastTimeInTimeElapsed) * m_TimeScale;
+        // vehicle.velocity += vehicle.acceleration * ts;
+        // // Truncate to maxSpeed if needed;
+        // truncate();
+        // updatePos();
+      }
+      // end Vehicle physics
+
+      // AI functions
+      function seek(targetPos) {
+        var desiredVelocity = normalize(targetPos - vehicle.pos) * vehicle.maxSpeed;
+        return (desiredVelocity - vehicle.velocity);
+      }
+      //
+
 
       // Helper
 
       function drawVehicle(ts) {
         ctx.fillStyle = '#ff8080';
-        ctx.fillRect(vehicleX, vehicleY, vehicleWidth, vehicleHeight);
+        ctx.fillRect(vehicle.x, vehicle.y, vehicle.width, vehicle.height);
+        vehicle.x += dx;
+        vehicle.y += dy;
       }
 
       function drawCircle(x, y, type) {
@@ -163,12 +201,12 @@
         for (var i = 0; i < existingCircles.length; i++) {
           // Doesn't seem to work well
           // TODO: debug collisions
-          if (existingCircles[i].x > vehicleX && existingCircles[i].x < vehicleX + vehicleWidth &&
-            existingCircles[i].y > vehicleY && existingCircles[i].y < vehicleY + vehicleHeight
+          if (existingCircles[i].x > vehicle.x && existingCircles[i].x < vehicle.x + vehicle.width &&
+            existingCircles[i].y > vehicle.y && existingCircles[i].y < vehicle.y + vehicle.height
             ) {
             console.log('test');
             // debugger;
-            
+
           }
         }
       }
