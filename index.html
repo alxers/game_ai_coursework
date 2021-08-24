@@ -67,34 +67,39 @@
       function gameLoop(timeStamp) {
 
         // Calculate the number of seconds passed since the last frame
-        // secondsPassed = (timeStamp - oldTimeStamp) / 1000;
-        // oldTimeStamp = timeStamp;
+        secondsPassed = (timeStamp - oldTimeStamp) / 1000;
+        oldTimeStamp = timeStamp;
         // tNow = timeStamp;
 
         // // Calculate fps
         // fps = Math.round(1 / secondsPassed);
 
         // Perform the drawing operation
-        draw(timeStamp);
+        draw(timeStamp, secondsPassed);
 
         // The loop function has reached it's end
         // Keep requesting new frames
         window.requestAnimationFrame(gameLoop);
       }
 
-      function draw(timeStamp) {
+      function draw(timeStamp, secondsFromLastFrame) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         var ts = timeStamp / 1000;
+
+        updateVehicle(secondsFromLastFrame);
         drawVehicle(ts);
         drawCircles(ts);
         collisionDetection();
       }
 
       // Vehicle physics
+      // https://lamberta.github.io/html5-animation/
 
       function updateVehicle(ts) {
         // vehicle.force = calculateSteeringForce();
+        var target = findClosestCircle();
+        // vehicle.force = seek(target.x, target.y);
         // vehicle.acceleration = vehicle.force / vehicle.mass;
         // // Check timeStamp here, should probably be time elapsed from previous frame?
         // // Originally it's m_TimeElapsed = (m_CurrentTime - m_LastTimeInTimeElapsed) * m_TimeScale;
@@ -118,8 +123,6 @@
       function drawVehicle(ts) {
         ctx.fillStyle = '#ff8080';
         ctx.fillRect(vehicle.x, vehicle.y, vehicle.width, vehicle.height);
-        vehicle.x += dx;
-        vehicle.y += dy;
       }
 
       function drawCircle(x, y, type) {
@@ -145,6 +148,11 @@
         for (var i = 0; i < existingCircles.length; i++) {
           var currCircle = existingCircles[i];
           currCircle.tStart ||= ts;
+          // TODO: check if this works correcly (count seconds for one circle)
+          // another option is to have "secondsPassed" and
+          // currCircle.timePassed += secondsPassed, then check if timePassed <= lifetime ?
+          // The current implementation uses "Static" time? (runs at different speed on different computers) ?
+          // https://developer.ibm.com/tutorials/wa-build2dphysicsengine/
           if (ts - currCircle.tStart <= currCircle.lifetime) {
             drawCircle(currCircle.x, currCircle.y, currCircle.type);
           } else {
@@ -156,6 +164,20 @@
           existingCircles.splice(j, 1);
         }
 
+      }
+
+      function findClosestCircle() {
+        var currMin = distanceSquared(vehicle.x, vehicle.y, existingCircles[0].x, existingCircles[0].y);
+        var ind = 0;
+        for (var i = 1; i < existingCircles.length; i++) {
+          var currDist = distanceSquared(vehicle.x, vehicle.y, existingCircles[i].x, existingCircles[i].y)
+          if (currDist < currMin) {
+            currMin = currDist;
+            ind = 0;
+          }
+        }
+
+        return existingCircles[ind];
       }
 
       function createCircle() {
@@ -195,6 +217,10 @@
           ctx.font = '25px Arial';
           ctx.fillStyle = 'black';
           // ctx.fillText("sec: " + oldTimeStamp, 10, 30);
+      }
+
+      function distanceSquared(x1, y1, x2, y2) {
+        return Math.pow(x2 - x1) + Math.pow(y2 - y1);
       }
 
       function collisionDetection() {
