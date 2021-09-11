@@ -67,6 +67,7 @@
       function gameLoop(timeStamp) {
 
         // Calculate the number of seconds passed since the last frame
+        oldTimeStamp ||= 0; // First frame
         secondsPassed = (timeStamp - oldTimeStamp) / 1000;
         oldTimeStamp = timeStamp;
         // tNow = timeStamp;
@@ -99,6 +100,18 @@
       function updateVehicle(ts) {
         // vehicle.force = calculateSteeringForce();
         var target = findClosestCircle();
+
+        if (!target.x || !target.y) {
+          return;
+        }
+        // var dx = Math.abs(vehicle.x - target.x);
+        // var dy = Math.abs(vehicle.y - target.y);
+        var dx = target.x - vehicle.x;
+        var dy = target.y - vehicle.y;
+        var angle = Math.atan2(dy, dx);
+
+        vehicle.x += Math.cos(angle) * 1;
+        vehicle.y += Math.sin(angle) * 1;
         // vehicle.force = seek(target.x, target.y);
         // vehicle.acceleration = vehicle.force / vehicle.mass;
         // // Check timeStamp here, should probably be time elapsed from previous frame?
@@ -167,6 +180,10 @@
       }
 
       function findClosestCircle() {
+        if (!existingCircles.length) {
+          // return { x: canvas.width/2, y: canvas.height/2 };
+          return { x: null, y: null };
+        }
         var currMin = distanceSquared(vehicle.x, vehicle.y, existingCircles[0].x, existingCircles[0].y);
         var ind = 0;
         for (var i = 1; i < existingCircles.length; i++) {
