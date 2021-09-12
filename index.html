@@ -35,7 +35,14 @@
         y: 0,
         width: 20,
         height: 20,
-        velocity: 0,
+        velocity: {
+          x: 0,
+          y: 0
+        },
+        acceleration: {
+          x: 0,
+          y: 0
+        },
         mass: 5,
         maxSpeed: 20,
         maxForce: 4
@@ -104,29 +111,45 @@
         if (!target.x || !target.y) {
           return;
         }
-        // var dx = Math.abs(vehicle.x - target.x);
-        // var dy = Math.abs(vehicle.y - target.y);
-        var dx = target.x - vehicle.x;
-        var dy = target.y - vehicle.y;
-        var angle = Math.atan2(dy, dx);
 
-        vehicle.x += Math.cos(angle) * 1;
-        vehicle.y += Math.sin(angle) * 1;
-        // vehicle.force = seek(target.x, target.y);
-        // vehicle.acceleration = vehicle.force / vehicle.mass;
+        // Regular movement (no force applied)
+        // var dx = target.x - vehicle.x;
+        // var dy = target.y - vehicle.y;
+        // var angle = Math.atan2(dy, dx);
+
+        // vehicle.x += Math.cos(angle) * 1;
+        // vehicle.y += Math.sin(angle) * 1;
+        //
+
+
+        vehicle.force = seek(target.x, target.y);
+        vehicle.acceleration.x = vehicle.force.x / vehicle.mass;
+        vehicle.acceleration.y = vehicle.force.y / vehicle.mass;
         // // Check timeStamp here, should probably be time elapsed from previous frame?
         // // Originally it's m_TimeElapsed = (m_CurrentTime - m_LastTimeInTimeElapsed) * m_TimeScale;
-        // vehicle.velocity += vehicle.acceleration * ts;
+        vehicle.velocity.x += vehicle.acceleration.x * ts;
+        vehicle.velocity.y += vehicle.acceleration.y * ts;
         // // Truncate to maxSpeed if needed;
         // truncate();
         // updatePos();
+        // Update position
+        vehicle.x += vehicle.velocity.x * ts;
+        vehicle.y += vehicle.velocity.y * ts;
       }
       // end Vehicle physics
 
       // AI functions
-      function seek(targetPos) {
-        var desiredVelocity = normalize(targetPos - vehicle.pos) * vehicle.maxSpeed;
-        return (desiredVelocity - vehicle.velocity);
+      function seek(targetX, targetY) {
+        var diffX = targetX - vehicle.x;
+        var diffY = targetY - vehicle.y;
+        var normalized = normalize(diffX, diffY);
+        var desiredVelocityX = normalized.x * vehicle.maxSpeed;
+        var desiredVelocityY = normalized.y * vehicle.maxSpeed;
+
+        return {
+          x: desiredVelocityX - vehicle.velocity.x,
+          y: desiredVelocityY - vehicle.velocity.y
+        };
       }
       //
 
@@ -251,6 +274,18 @@
             // debugger;
 
           }
+        }
+      }
+
+      function vecLength(x, y) {
+        return Math.sqrt(x*x + y*y);
+      }
+
+      function normalize(x, y) {
+        var len = vecLength(x, y);
+        return {
+          x: x / len,
+          y: y / len
         }
       }
       // end Helper
