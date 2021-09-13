@@ -108,6 +108,8 @@
         // vehicle.force = calculateSteeringForce();
         var target = findClosestCircle();
 
+        // If x or y is 0 ?
+        // Does this going to introduce some movement issues?
         if (!target.x || !target.y) {
           return;
         }
@@ -121,6 +123,8 @@
         // vehicle.y += Math.sin(angle) * 1;
         //
 
+        // https://github.com/wangchen/Programming-Game-AI-by-Example-src/blob/master/Buckland_Chapter3-Steering%20Behaviors/Vehicle.cpp
+        // https://github.com/wangchen/Programming-Game-AI-by-Example-src/blob/master/Buckland_Chapter3-Steering%20Behaviors/SteeringBehaviors.cpp
 
         vehicle.force = seek(target.x, target.y);
         vehicle.acceleration.x = vehicle.force.x / vehicle.mass;
@@ -213,7 +217,7 @@
           var currDist = distanceSquared(vehicle.x, vehicle.y, existingCircles[i].x, existingCircles[i].y)
           if (currDist < currMin) {
             currMin = currDist;
-            ind = 0;
+            ind = i;
           }
         }
 
@@ -222,11 +226,11 @@
 
       function createCircle() {
         var lifetime = randFromTo(10, 30);
-        // Type 1: mine
+        // Type 1: bad
         var type = 1;
 
         if (randFromTo(0, 100) > 80) {
-          // Type 2: energy
+          // Type 2: good
           type = 2;
         }
 
@@ -260,7 +264,7 @@
       }
 
       function distanceSquared(x1, y1, x2, y2) {
-        return Math.pow(x2 - x1) + Math.pow(y2 - y1);
+        return Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
       }
 
       function collisionDetection() {
