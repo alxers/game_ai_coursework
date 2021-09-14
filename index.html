@@ -26,6 +26,8 @@
       var circleRadius = 10;
       var maxCircles = 12;
       var existingCircles = [];
+      var BAD = 1;
+      var GOOD = 2;
       // end Circles variables
 
       // Vehicle object
@@ -211,27 +213,40 @@
           // return { x: canvas.width/2, y: canvas.height/2 };
           return { x: null, y: null };
         }
-        var currMin = distanceSquared(vehicle.x, vehicle.y, existingCircles[0].x, existingCircles[0].y);
-        var ind = 0;
-        for (var i = 1; i < existingCircles.length; i++) {
-          var currDist = distanceSquared(vehicle.x, vehicle.y, existingCircles[i].x, existingCircles[i].y)
-          if (currDist < currMin) {
-            currMin = currDist;
-            ind = i;
+
+        // if (existingCircles[i].type === GOOD) {
+        //   var currMin = distanceSquared(vehicle.x, vehicle.y, existingCircles[0].x, existingCircles[0].y);
+        //   var ind = 0;
+        // }
+        var result;
+        var currMin = Number.MAX_VALUE;
+        var ind;
+        for (var i = 0; i < existingCircles.length; i++) {
+          if (existingCircles[i].type === GOOD) {
+            var currDist = distanceSquared(vehicle.x, vehicle.y, existingCircles[i].x, existingCircles[i].y)
+            if (currDist < currMin) {
+              currMin = currDist;
+              ind = i;
+              result = existingCircles[ind];
+            }
           }
         }
 
-        return existingCircles[ind];
+        if (!result) {
+          result = { x: null, y: null };
+        }
+
+        return result;
       }
 
       function createCircle() {
         var lifetime = randFromTo(10, 30);
         // Type 1: bad
-        var type = 1;
+        var type = BAD;
 
         if (randFromTo(0, 100) > 80) {
           // Type 2: good
-          type = 2;
+          type = GOOD;
         }
 
         var x = randFromTo(circleRadius, canvas.width - circleRadius);
