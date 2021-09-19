@@ -8,7 +8,7 @@
     </style>
   </head>
   <body">
-    <canvas id="ai" width="800" height="200"></canvas>
+    <canvas id="ai" width="400" height="200"></canvas>
     <script type="text/javascript">
       //https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript/Finishing_up
 
@@ -21,6 +21,9 @@
 
       var dx = 0.2;
       var dy = -0.2;
+
+      // Obstacle avoidance params
+      var MIN_DETECTION_BOX_LEN = 20;
 
       // Circles variables
       var circleRadius = 10;
@@ -45,9 +48,11 @@
           x: 0,
           y: 0
         },
-        mass: 5,
-        maxSpeed: 20,
-        maxForce: 4
+        mass: 1,
+        maxSpeed: 30,
+        maxForce: 4,
+        // Approximate radius for obstacle avoidance
+        radius: 15
       };
       // end Vehicle object
 
@@ -64,8 +69,10 @@
         canvas = document.getElementById('ai');
         ctx = canvas.getContext('2d');
 
-        vehicle.x = randFromTo(20, canvas.width - 20);
-        vehicle.y = randFromTo(20, canvas.height - 20);
+        // vehicle.x = randFromTo(20, canvas.width - 20);
+        // vehicle.y = randFromTo(20, canvas.height - 20);
+        vehicle.x = canvas.width/2;
+        vehicle.y = canvas.height/2;
 
         // Request an animation frame for the first time
         // The gameLoop() function will be called as a callback of this request
@@ -128,7 +135,11 @@
         // https://github.com/wangchen/Programming-Game-AI-by-Example-src/blob/master/Buckland_Chapter3-Steering%20Behaviors/Vehicle.cpp
         // https://github.com/wangchen/Programming-Game-AI-by-Example-src/blob/master/Buckland_Chapter3-Steering%20Behaviors/SteeringBehaviors.cpp
 
-        vehicle.force = seek(target.x, target.y);
+        var seekForce = seek(target.x, target.y);
+        var obstacleAvoidanceForce = obstacleAvoidance();
+        var forceSum = { x: seekForce.x + obstacleAvoidanceForce.x, y: seekForce.y + obstacleAvoidanceForce.y };
+
+        vehicle.force = forceSum;
         vehicle.acceleration.x = vehicle.force.x / vehicle.mass;
         vehicle.acceleration.y = vehicle.force.y / vehicle.mass;
         // // Check timeStamp here, should probably be time elapsed from previous frame?
@@ -157,7 +168,208 @@
           y: desiredVelocityY - vehicle.velocity.y
         };
       }
-      //
+
+      function obstacleAvoidance() {
+        var vehicleSpeed = vecLength(vehicle.velocity.x, vehicle.velocity.y);
+        var detectionBoxLen = MIN_DETECTION_BOX_LEN +
+          (vehicleSpeed / vehicle.maxSpeed) * 
+          MIN_DETECTION_BOX_LEN;
+
+        // Tag all the obstacles within range
+        tagObstaclesWithinViewRange(detectionBoxLen);
+
+        // CIB
+        var closestIntersectionObstacle = null;
+        var distToCIB = Number.MAX_VALUE;
+
+        // Transformed local coords of the CIB
+        var localPosOfCIB = { x: null, y: null };
+
+        // A normalized vector pointing in the direction the entity is Heading.
+        var agentPos = { x: vehicle.x, y: vehicle.y };
+        var agentHeading = normalize(vehicle.velocity.x, vehicle.velocity.y);
+        // Side is perpendicular to the heading vector
+        var agentSide = perpendicular(agentHeading.x, agentHeading.y);
+
+        for (var i = 0; i < existingCircles.length; i++) {
+          var currOb = existingCircles[i];
+          if (currOb.isTagged) {
+            // Calculate this obstacle position in local space
+            var localPos = pointToLocalSpace(currOb, agentHeading, agentSide, agentPos);
+            // If local position has negative value,
+            // then it's behind. We ignore it.
+            if (localPos.x >= 0) {
+              var expandedRadius = (currOb.radius + vehicle.radius);
+              // TODO: check if "abs". In C++ "fabs" is used
+              if (Math.abs(localPos.y) < expandedRadius) {
+                // Line/circle intersection test.
+                // Intersection point x = circleX +/- sqrt(r^2 - circleY^2) for y = 0.
+                var cX = localPos.x;
+                var cY = localPos.y;
+
+                var sqrtPart = Math.sqrt(expandedRadius*expandedRadius - cY*cY);
+                var ip = cX - sqrtPart;
+
+                if (ip <= 0) {
+                  ip = cX + sqrtPart;
+                }
+
+                // Test to check if it's closest so far
+                if (ip < distToCIB) {
+                  distToCIB = ip;
+                  closestIntersectionObstacle = currOb;
+                  localPosOfCIB = localPos;
+                }
+              }
+            }
+          }
+        }
+
+        // If intersection obstacle is found, calculate a steering force away from it.
+        var steeringForce = { x: null, y: null };
+
+        if (closestIntersectionObstacle) {
+          // The closer to an obstacle, the stronger the steering force
+          var multiplier = 1 + (detectionBoxLen - localPosOfCIB.x) / detectionBoxLen;
+
+          // Calculate the lateral force
+          steeringForce.y = (closestIntersectionObstacle.radius - localPosOfCIB.y) * multiplier;
+          // Apply breaking force
+          // var breakingWeight = 0.2;
+          var breakingWeight = 2.2;
+          steeringForce.x = (closestIntersectionObstacle.radius - localPosOfCIB.x) * breakingWeight;
+        }
+
+        // Convert steering vector back to world space coords
+        return vectorToWorldSpace(steeringForce, agentHeading, agentSide);
+      }
+
+      // TODO: check if tag can be applied in distance detection loop
+      function tagObstaclesWithinViewRange(radius) {
+        for (var i = 0; i < existingCircles.length; i++) {
+          currObj = existingCircles[i];
+          if (currObj.type === BAD) {
+            currObj.isTagged = false;
+
+            var to = { x: currObj.x - vehicle.x, y: currObj.y - vehicle.y };
+            var range = radius + currObj.radius;
+
+            // if (Math.abs(currObj.x - vehicle.x) < 50 || Math.abs(currObj.y - vehicle.y) < 50) {
+            //   debugger;
+            // }
+
+            // If within range, tag it
+            if (lengthSquared(to.x, to.y) < range*range) {
+              console.log(currObj, 'tagged');
+              currObj.isTagged = true;
+            }
+          }
+        }
+      }
+      // end AI functions
+
+      // Math helper
+
+      function vectorToWorldSpace(vec, agentHeading, agentSide) {
+        var matTransform = createRotationMatr(agentHeading, agentSide);
+
+        // Transform vertices
+        var res = transformVector2Ds(matTransform, vec);
+        return res;
+      }
+
+      function pointToLocalSpace(obstacle, agentHeading, agentSide, agentPos) {
+        var tX = -dotProduct(agentPos, agentHeading);
+        var tY = -dotProduct(agentPos, agentSide);
+
+        // Transformation matrix
+        var matTransform = [
+          [agentHeading.x, agentSide.x],
+          [agentHeading.y, agentSide.y],
+          [tX, tY]
+        ];
+        var transPoint = transformVector2Ds(matTransform, { x: obstacle.x, y: obstacle.y });
+
+        return transPoint;
+      }
+
+      function createRotationMatr(fwd, side) {
+        //create a rotation matrix from a 2D vector
+        var identityMatr = [
+          [1, 0, 0],
+          [0, 1, 0],
+          [0, 0, 1]
+        ];
+
+        var rotMatr = [
+          [fwd.x, fwd.y, 0],
+          [side.x, side.y, 0],
+          [0, 0, 1]
+        ];
+
+        return matrMultiply(identityMatr, rotMatr);
+      }
+
+      function matrMultiply(m1, m2) {
+        var result = [
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0]
+        ];
+
+        result[0][0] = (m1[0][0] * m2[0][0]) + (m1[0][1] * m2[1][0]) + (m1[0][2] * m2[2][0]);
+        result[0][1] = (m1[0][0] * m2[0][1]) + (m1[0][1] * m2[1][1]) + (m1[0][2] * m2[2][1]);
+        result[0][2] = (m1[0][0] * m2[0][2]) + (m1[0][1] * m2[1][2]) + (m1[0][2] * m2[2][2]);
+
+        result[1][0] = (m1[1][0] * m2[0][0]) + (m1[1][1] * m2[1][0]) + (m1[1][2] * m2[2][0]);
+        result[1][1] = (m1[1][0] * m2[0][1]) + (m1[1][1] * m2[1][1]) + (m1[1][2] * m2[2][1]);
+        result[1][2] = (m1[1][0] * m2[0][2]) + (m1[1][1] * m2[1][2]) + (m1[1][2] * m2[2][2]);
+
+        result[2][0] = (m1[2][0] * m2[0][0]) + (m1[2][1] * m2[1][0]) + (m1[2][2] * m2[2][0]);
+        result[2][1] = (m1[2][0] * m2[0][1]) + (m1[2][1] * m2[1][1]) + (m1[2][2] * m2[2][1]);
+        result[2][2] = (m1[2][0] * m2[0][2]) + (m1[2][1] * m2[1][2]) + (m1[2][2] * m2[2][2]);
+
+        return result;
+      }
+
+      function transformVector2Ds(matr, point) {
+        var pointX = (matr[0][0] * point.x) + (matr[1][0] * point.y) + matr[2][0];
+        var pointY = (matr[0][1] * point.x) + (matr[1][1] * point.y) + matr[2][1];
+
+        return { x: pointX, y: pointY };
+      }
+
+      function dotProduct(vec1, vec2) {
+        return vec1.x * vec2.x + vec1.y * vec2.y;
+      }
+
+      function perpendicular(x, y) {
+        return { x: -y, y: x };
+      }
+
+      function distanceSquared(x1, y1, x2, y2) {
+        return Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
+      }
+
+      function lengthSquared(x, y) {
+        return (x*x + y*y);
+      }
+
+      function vecLength(x, y) {
+        return Math.sqrt(x*x + y*y);
+      }
+
+      function normalize(x, y) {
+        if (x === 0 && y === 0) {
+          return { x: 0, y: 0 };
+        }
+        var len = vecLength(x, y);
+        return {
+          x: x / len,
+          y: y / len
+        }
+      }
+      // end Math helper
 
 
       // Helper
@@ -181,9 +393,35 @@
       }
 
       function drawCircles(ts) {
-        if (randFromTo(0, 1000) > 993 && existingCircles.length < maxCircles) {
-          existingCircles.push(createCircle());
-        }
+        // DEBUG MODE
+        existingCircles.push({
+          x: canvas.width/2 + 50,
+          y: canvas.height/2 - 50,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        existingCircles.push({
+          x: canvas.width/2 + 120,
+          y: canvas.height/2 - 50,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        existingCircles.push({
+          x: canvas.width/2 + 100,
+          y: canvas.height/2 - 80,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: GOOD
+        });
+        // END DEBUG MODE
+        // if (randFromTo(0, 1000) > 993 && existingCircles.length < maxCircles) {
+        //   existingCircles.push(createCircle());
+        // }
 
         var circleIndexesToRemove = [];
 
@@ -251,7 +489,6 @@
 
         var x = randFromTo(circleRadius, canvas.width - circleRadius);
         var y = randFromTo(circleRadius, canvas.height - circleRadius);
-        console.log(lifetime);
         return {
           lifetime: lifetime,
           // Type 1 - energy, type 2 - mine
@@ -260,7 +497,10 @@
           tStart: null,
           // x and y coords
           x: x,
-          y: y
+          y: y,
+          // Used in obstacle avoidance
+          radius: circleRadius,
+          isTagged: false
         }
       }
 
@@ -278,10 +518,6 @@
           // ctx.fillText("sec: " + oldTimeStamp, 10, 30);
       }
 
-      function distanceSquared(x1, y1, x2, y2) {
-        return Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
-      }
-
       function collisionDetection() {
         for (var i = 0; i < existingCircles.length; i++) {
           // Doesn't seem to work well
@@ -293,18 +529,6 @@
             // debugger;
 
           }
-        }
-      }
-
-      function vecLength(x, y) {
-        return Math.sqrt(x*x + y*y);
-      }
-
-      function normalize(x, y) {
-        var len = vecLength(x, y);
-        return {
-          x: x / len,
-          y: y / len
         }
       }
       // end Helper
