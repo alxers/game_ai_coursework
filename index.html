@@ -19,11 +19,13 @@
       var oldTimeStamp;
       var fps;
 
-      var dx = 0.2;
-      var dy = -0.2;
+      // var dx = 0.2;
+      // var dy = -0.2;
+
+      var DEBUG_MODE = false;
 
       // Obstacle avoidance params
-      var MIN_DETECTION_BOX_LEN = 20;
+      var MIN_DETECTION_BOX_LEN = 40;
 
       // Circles variables
       var circleRadius = 10;
@@ -49,10 +51,13 @@
           y: 0
         },
         mass: 1,
-        maxSpeed: 30,
+        // 150 in the book
+        maxSpeed: 50,
         maxForce: 4,
         // Approximate radius for obstacle avoidance
-        radius: 15
+        radius: 15,
+        collidedWithGood: 0,
+        collidedWithBad: 0
       };
       // end Vehicle object
 
@@ -69,10 +74,49 @@
         canvas = document.getElementById('ai');
         ctx = canvas.getContext('2d');
 
-        // vehicle.x = randFromTo(20, canvas.width - 20);
-        // vehicle.y = randFromTo(20, canvas.height - 20);
-        vehicle.x = canvas.width/2;
-        vehicle.y = canvas.height/2;
+        if (!DEBUG_MODE) {
+          vehicle.x = randFromTo(20, canvas.width - 20);
+          vehicle.y = randFromTo(20, canvas.height - 20);
+        }
+
+        // DEBUG MODE
+        if (DEBUG_MODE) {
+          vehicle.x = canvas.width/2;
+          vehicle.y = canvas.height/2;
+          existingCircles.push({
+            x: canvas.width/2 + 50,
+            y: canvas.height/2 - 50,
+            lifetime: 1000,
+            tStart: 0,
+            radius: 10,
+            type: BAD
+          });
+          existingCircles.push({
+            x: canvas.width/2 + 120,
+            y: canvas.height/2 - 50,
+            lifetime: 1000,
+            tStart: 0,
+            radius: 10,
+            type: BAD
+          });
+          existingCircles.push({
+            x: canvas.width/2 + 100,
+            y: canvas.height/2 - 80,
+            lifetime: 1000,
+            tStart: 0,
+            radius: 10,
+            type: GOOD
+          });
+          existingCircles.push({
+            x: canvas.width/2 - 163,
+            y: canvas.height/2 - 16,
+            lifetime: 1000,
+            tStart: 0,
+            radius: 10,
+            type: GOOD
+          });
+        }
+        // END DEBUG MODE
 
         // Request an animation frame for the first time
         // The gameLoop() function will be called as a callback of this request
@@ -147,7 +191,7 @@
         vehicle.velocity.x += vehicle.acceleration.x * ts;
         vehicle.velocity.y += vehicle.acceleration.y * ts;
         // // Truncate to maxSpeed if needed;
-        // truncate();
+        // truncateSpeed();
         // updatePos();
         // Update position
         vehicle.x += vehicle.velocity.x * ts;
@@ -235,8 +279,8 @@
           // Calculate the lateral force
           steeringForce.y = (closestIntersectionObstacle.radius - localPosOfCIB.y) * multiplier;
           // Apply breaking force
-          // var breakingWeight = 0.2;
-          var breakingWeight = 2.2;
+          var breakingWeight = 0.2;
+          // var breakingWeight = 2.2;
           steeringForce.x = (closestIntersectionObstacle.radius - localPosOfCIB.x) * breakingWeight;
         }
 
@@ -260,7 +304,6 @@
 
             // If within range, tag it
             if (lengthSquared(to.x, to.y) < range*range) {
-              console.log(currObj, 'tagged');
               currObj.isTagged = true;
             }
           }
@@ -393,35 +436,9 @@
       }
 
       function drawCircles(ts) {
-        // DEBUG MODE
-        existingCircles.push({
-          x: canvas.width/2 + 50,
-          y: canvas.height/2 - 50,
-          lifetime: 1000,
-          tStart: 0,
-          radius: 10,
-          type: BAD
-        });
-        existingCircles.push({
-          x: canvas.width/2 + 120,
-          y: canvas.height/2 - 50,
-          lifetime: 1000,
-          tStart: 0,
-          radius: 10,
-          type: BAD
-        });
-        existingCircles.push({
-          x: canvas.width/2 + 100,
-          y: canvas.height/2 - 80,
-          lifetime: 1000,
-          tStart: 0,
-          radius: 10,
-          type: GOOD
-        });
-        // END DEBUG MODE
-        // if (randFromTo(0, 1000) > 993 && existingCircles.length < maxCircles) {
-        //   existingCircles.push(createCircle());
-        // }
+        if (randFromTo(0, 1000) > 993 && existingCircles.length < maxCircles && !DEBUG_MODE) {
+          existingCircles.push(createCircle());
+        }
 
         var circleIndexesToRemove = [];
 
@@ -491,7 +508,6 @@
         var y = randFromTo(circleRadius, canvas.height - circleRadius);
         return {
           lifetime: lifetime,
-          // Type 1 - energy, type 2 - mine
           type: type,
           // if Current time - tStart > lifetime, then do not draw anymore
           tStart: null,
@@ -525,10 +541,24 @@
           if (existingCircles[i].x > vehicle.x && existingCircles[i].x < vehicle.x + vehicle.width &&
             existingCircles[i].y > vehicle.y && existingCircles[i].y < vehicle.y + vehicle.height
             ) {
-            console.log('test');
+            // console.log('test');
             // debugger;
-
+            if (existingCircles[i].type === GOOD) {
+              vehicle.collidedWithGood += 1;
+            }
+            if (existingCircles[i].type === BAD) {
+              vehicle.collidedWithBad += 1;
+            }
+            existingCircles.splice(i, 1);
           }
+        }
+      }
+
+      function truncateSpeed() {
+        if (vecLength(vehicle.velocity.x, vehicle.velocity.y) > vehicle.maxSpeed) {
+          var normalized = normalize(vehicle.velocity.x, vehicle.velocity.y);
+          vehicle.velocity.x = normalized.x * vehicle.maxSpeed;
+          vehicle.velocity.y = normalized.y * vehicle.maxSpeed;
         }
       }
       // end Helper
