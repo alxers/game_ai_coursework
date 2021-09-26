@@ -22,10 +22,13 @@
       // var dx = 0.2;
       // var dy = -0.2;
 
-      var DEBUG_MODE = false;
+      var DEBUG_MODE = true;
 
       // Obstacle avoidance params
       var MIN_DETECTION_BOX_LEN = 40;
+      // Used for debugging
+      var DETECTION_BOX_LEN = 0;
+      var AGENT_HEADING = { x: 0, y: 0 };
 
       // Circles variables
       var circleRadius = 10;
@@ -52,10 +55,11 @@
         },
         mass: 1,
         // 150 in the book
-        maxSpeed: 50,
+        maxSpeed: 30,
         maxForce: 4,
+        rotation: 0,
         // Approximate radius for obstacle avoidance
-        radius: 15,
+        radius: 10,
         collidedWithGood: 0,
         collidedWithBad: 0
       };
@@ -150,6 +154,9 @@
 
         updateVehicle(secondsFromLastFrame);
         drawVehicle(ts);
+        if (DEBUG_MODE) {
+          drawDetectionBox();
+        }
         drawCircles(ts);
         collisionDetection();
       }
@@ -158,12 +165,9 @@
       // https://lamberta.github.io/html5-animation/
 
       function updateVehicle(ts) {
-        // vehicle.force = calculateSteeringForce();
         var target = findClosestCircle();
 
-        // If x or y is 0 ?
-        // Does this going to introduce some movement issues?
-        if (!target.x || !target.y) {
+        if (!target.x && !target.y) {
           return;
         }
 
@@ -171,6 +175,17 @@
         // var dx = target.x - vehicle.x;
         // var dy = target.y - vehicle.y;
         // var angle = Math.atan2(dy, dx);
+
+        // vehicle.x += Math.cos(angle) * 1;
+        // vehicle.y += Math.sin(angle) * 1;
+        //
+
+        // Rotate vehicle (rotates toward the target)
+        var dx = target.x - vehicle.x;
+        var dy = target.y - vehicle.y;
+        var angle = Math.atan2(dy, dx);
+        vehicle.rotation = angle;
+        //
 
         // vehicle.x += Math.cos(angle) * 1;
         // vehicle.y += Math.sin(angle) * 1;
@@ -218,6 +233,7 @@
         var detectionBoxLen = MIN_DETECTION_BOX_LEN +
           (vehicleSpeed / vehicle.maxSpeed) * 
           MIN_DETECTION_BOX_LEN;
+        DETECTION_BOX_LEN = detectionBoxLen;
 
         // Tag all the obstacles within range
         tagObstaclesWithinViewRange(detectionBoxLen);
@@ -232,11 +248,13 @@
         // A normalized vector pointing in the direction the entity is Heading.
         var agentPos = { x: vehicle.x, y: vehicle.y };
         var agentHeading = normalize(vehicle.velocity.x, vehicle.velocity.y);
+        AGENT_HEADING = agentHeading;
         // Side is perpendicular to the heading vector
         var agentSide = perpendicular(agentHeading.x, agentHeading.y);
 
         for (var i = 0; i < existingCircles.length; i++) {
           var currOb = existingCircles[i];
+          currOb.isIntersect = false;
           if (currOb.isTagged) {
             // Calculate this obstacle position in local space
             var localPos = pointToLocalSpace(currOb, agentHeading, agentSide, agentPos);
@@ -244,7 +262,6 @@
             // then it's behind. We ignore it.
             if (localPos.x >= 0) {
               var expandedRadius = (currOb.radius + vehicle.radius);
-              // TODO: check if "abs". In C++ "fabs" is used
               if (Math.abs(localPos.y) < expandedRadius) {
                 // Line/circle intersection test.
                 // Intersection point x = circleX +/- sqrt(r^2 - circleY^2) for y = 0.
@@ -260,6 +277,7 @@
 
                 // Test to check if it's closest so far
                 if (ip < distToCIB) {
+                  currOb.isIntersect = true;
                   distToCIB = ip;
                   closestIntersectionObstacle = currOb;
                   localPosOfCIB = localPos;
@@ -417,12 +435,55 @@
 
       // Helper
 
-      function drawVehicle(ts) {
+      function drawVehicle2(ts) {
         ctx.fillStyle = '#ff8080';
         ctx.fillRect(vehicle.x, vehicle.y, vehicle.width, vehicle.height);
       }
 
-      function drawCircle(x, y, type) {
+      function drawVehicle(ts) {
+        ctx.save();
+        ctx.translate(vehicle.x, vehicle.y);
+        ctx.rotate(vehicle.rotation);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#000";
+        ctx.beginPath();
+        ctx.moveTo(10, 0);
+        ctx.lineTo(-10, 10);
+        ctx.lineTo(-5, 0);
+        ctx.lineTo(-10, -10);
+        ctx.lineTo(10, 0);
+        ctx.stroke();
+        if (vehicle.showFlame) {
+          ctx.beginPath();
+          ctx.moveTo(-7.5, -5);
+          ctx.lineTo(-15, 0);
+          ctx.lineTo(-7.5, 5);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawDetectionBox() {
+        // var dx = target.x - vehicle.x;
+        // var dy = target.y - vehicle.y;
+        // var angle = Math.atan2(dy, dx);
+
+        // vehicle.x += Math.cos(angle) * 1;
+        // vehicle.y += Math.sin(angle) * 1;
+
+        // var angle = Math.atan2(AGENT_HEADING.y, AGENT_HEADING.x);
+        // ctx.rotate(45 * Math.PI / 180);
+        ctx.save();
+        ctx.translate(vehicle.x, vehicle.y);
+        ctx.rotate(vehicle.rotation);
+        ctx.fillStyle = "rgba(61, 48, 48, 0.5)";
+        // ctx.fillRect(0, 0, vehicle.radius, DETECTION_BOX_LEN);
+        ctx.fillRect(-10, -10, DETECTION_BOX_LEN, 2*vehicle.radius);
+        // ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.restore();
+      }
+
+      function drawCircle(x, y, type, c) {
         var color = '#880000';
         if (type == 2) {
           color = '#0095DD';
@@ -431,6 +492,9 @@
         ctx.beginPath();
         ctx.arc(x, y, circleRadius, 0, Math.PI*2);
         ctx.fillStyle = color;
+        if (DEBUG_MODE) {
+          ctx.fillStyle = c;
+        }
         ctx.fill();
         ctx.closePath();
       }
@@ -451,7 +515,11 @@
           // The current implementation uses "Static" time? (runs at different speed on different computers) ?
           // https://developer.ibm.com/tutorials/wa-build2dphysicsengine/
           if (ts - currCircle.tStart <= currCircle.lifetime) {
-            drawCircle(currCircle.x, currCircle.y, currCircle.type);
+            var color = '#000';
+            if(currCircle.isIntersect) {
+              color = '#fff666';
+            }
+            drawCircle(currCircle.x, currCircle.y, currCircle.type, color);
           } else {
             circleIndexesToRemove.push(i);
           }
