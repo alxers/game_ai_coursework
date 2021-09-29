@@ -8,7 +8,7 @@
     </style>
   </head>
   <body">
-    <canvas id="ai" width="400" height="200"></canvas>
+    <canvas id="ai" width="800" height="200"></canvas>
     <script type="text/javascript">
       //https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript/Finishing_up
 
@@ -18,9 +18,6 @@
       var secondsPassed;
       var oldTimeStamp;
       var fps;
-
-      // var dx = 0.2;
-      // var dy = -0.2;
 
       var DEBUG_MODE = true;
 
@@ -32,7 +29,7 @@
 
       // Circles variables
       var circleRadius = 10;
-      var maxCircles = 12;
+      var maxCircles = 30;
       var existingCircles = [];
       var BAD = 1;
       var GOOD = 2;
@@ -54,8 +51,8 @@
           y: 0
         },
         mass: 1,
-        // 150 in the book
-        maxSpeed: 30,
+        // TODO: 150 in the book (check why it doesn't try to avoid when maxSpeed increases)
+        maxSpeed: 50,
         maxForce: 4,
         rotation: 0,
         // Approximate radius for obstacle avoidance
@@ -88,37 +85,37 @@
           vehicle.x = canvas.width/2;
           vehicle.y = canvas.height/2;
           existingCircles.push({
-            x: canvas.width/2 + 50,
-            y: canvas.height/2 - 50,
+            x: canvas.width/2 + 40,
+            y: canvas.height/2 - 20,
             lifetime: 1000,
             tStart: 0,
             radius: 10,
             type: BAD
           });
           existingCircles.push({
-            x: canvas.width/2 + 120,
-            y: canvas.height/2 - 50,
+            x: canvas.width/2 + 40,
+            y: canvas.height/2 + 20,
             lifetime: 1000,
             tStart: 0,
             radius: 10,
             type: BAD
           });
           existingCircles.push({
-            x: canvas.width/2 + 100,
-            y: canvas.height/2 - 80,
+            x: canvas.width/2 + 200,
+            y: canvas.height/2,
             lifetime: 1000,
             tStart: 0,
             radius: 10,
             type: GOOD
           });
-          existingCircles.push({
-            x: canvas.width/2 - 163,
-            y: canvas.height/2 - 16,
-            lifetime: 1000,
-            tStart: 0,
-            radius: 10,
-            type: GOOD
-          });
+          // existingCircles.push({
+          //   x: canvas.width/2 - 163,
+          //   y: canvas.height/2 - 16,
+          //   lifetime: 1000,
+          //   tStart: 0,
+          //   radius: 10,
+          //   type: GOOD
+          // });
         }
         // END DEBUG MODE
 
@@ -154,11 +151,11 @@
 
         updateVehicle(secondsFromLastFrame);
         drawVehicle(ts);
-        if (DEBUG_MODE) {
+        // if (DEBUG_MODE) {
           drawDetectionBox();
-        }
+        // }
         drawCircles(ts);
-        collisionDetection();
+        // collisionDetection();
       }
 
       // Vehicle physics
@@ -181,15 +178,15 @@
         //
 
         // Rotate vehicle (rotates toward the target)
-        var dx = target.x - vehicle.x;
-        var dy = target.y - vehicle.y;
-        var angle = Math.atan2(dy, dx);
-        vehicle.rotation = angle;
+        // var dx = target.x - vehicle.x;
+        // var dy = target.y - vehicle.y;
+        // var angle = Math.atan2(dy, dx);
+        // vehicle.rotation = angle;
         //
 
-        // vehicle.x += Math.cos(angle) * 1;
-        // vehicle.y += Math.sin(angle) * 1;
-        //
+        // Rotate (towards the velocity)
+        var angle = Math.atan2(AGENT_HEADING.y, AGENT_HEADING.x);
+        vehicle.rotation = angle;
 
         // https://github.com/wangchen/Programming-Game-AI-by-Example-src/blob/master/Buckland_Chapter3-Steering%20Behaviors/Vehicle.cpp
         // https://github.com/wangchen/Programming-Game-AI-by-Example-src/blob/master/Buckland_Chapter3-Steering%20Behaviors/SteeringBehaviors.cpp
@@ -255,7 +252,7 @@
         for (var i = 0; i < existingCircles.length; i++) {
           var currOb = existingCircles[i];
           currOb.isIntersect = false;
-          if (currOb.isTagged) {
+          if (true) {
             // Calculate this obstacle position in local space
             var localPos = pointToLocalSpace(currOb, agentHeading, agentSide, agentPos);
             // If local position has negative value,
@@ -275,8 +272,21 @@
                   ip = cX + sqrtPart;
                 }
 
+                // TODO: works with ip < 0.8
+                // Collision detection attempt
+                // It could be done here, but it doesn't work well in some cases
+                // if (ip < 1) {
+                //     if (currOb.type === GOOD) {
+                //       vehicle.collidedWithGood += 1;
+                //     }
+                //     if (currOb.type === BAD) {
+                //       vehicle.collidedWithBad += 1;
+                //     }
+                //     existingCircles.splice(i, 1);
+                // }
+
                 // Test to check if it's closest so far
-                if (ip < distToCIB) {
+                if (currOb.isTagged && (ip < distToCIB)) {
                   currOb.isIntersect = true;
                   distToCIB = ip;
                   closestIntersectionObstacle = currOb;
@@ -441,6 +451,17 @@
       }
 
       function drawVehicle(ts) {
+        // ctx.save();
+        // ctx.translate(vehicle.x, vehicle.y);
+        // ctx.fillStyle = "rgba(250, 15, 15, 0.3)";
+        // // ctx.fillRect(vehicle.x, vehicle.y, vehicle.width, vehicle.height);
+        // ctx.fillRect(-10, 10, vehicle.width, vehicle.height);
+        // ctx.restore();
+
+        // ctx.fillStyle = "rgba(250, 150, 150, 0.3)";
+        // ctx.fillRect(vehicle.x, vehicle.y, vehicle.width, vehicle.height);
+
+        // Drawn with x and y in the center of a vehicle
         ctx.save();
         ctx.translate(vehicle.x, vehicle.y);
         ctx.rotate(vehicle.rotation);
@@ -461,6 +482,28 @@
           ctx.stroke();
         }
         ctx.restore();
+
+        // Test
+        // ctx.save();
+        // ctx.translate(vehicle.x, vehicle.y);
+        // // ctx.rotate(vehicle.rotation);
+        // ctx.lineWidth = 1;
+        // ctx.strokeStyle = "#000";
+        // ctx.beginPath();
+        // ctx.moveTo(10, 0);
+        // ctx.lineTo(-10, 10);
+        // // ctx.lineTo(-5, 0);
+        // // ctx.lineTo(-10, -10);
+        // // ctx.lineTo(10, 0);
+        // ctx.stroke();
+        // if (vehicle.showFlame) {
+        //   ctx.beginPath();
+        //   ctx.moveTo(-7.5, -5);
+        //   ctx.lineTo(-15, 0);
+        //   ctx.lineTo(-7.5, 5);
+        //   ctx.stroke();
+        // }
+        // ctx.restore();
       }
 
       function drawDetectionBox() {
@@ -473,6 +516,7 @@
 
         // var angle = Math.atan2(AGENT_HEADING.y, AGENT_HEADING.x);
         // ctx.rotate(45 * Math.PI / 180);
+        // drawPoint(vehicle.x, vehicle.y);
         ctx.save();
         ctx.translate(vehicle.x, vehicle.y);
         ctx.rotate(vehicle.rotation);
@@ -480,6 +524,9 @@
         // ctx.fillRect(0, 0, vehicle.radius, DETECTION_BOX_LEN);
         ctx.fillRect(-10, -10, DETECTION_BOX_LEN, 2*vehicle.radius);
         // ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        ctx.fillStyle = "rgba(250, 150, 150, 0.3)";
+        ctx.fillRect(-10, -10, vehicle.width, vehicle.height);
         ctx.restore();
       }
 
@@ -531,6 +578,18 @@
 
       }
 
+      function drawPoint(x, y) {
+        ctx.fillRect(x, y, 3, 3);
+      }
+
+      // function drawPoint2(x, y) {
+      //   ctx.save();
+      //   ctx.translate(x, y);
+      //   ctx.rotate(vehicle.rotation);
+      //   ctx.fillRect(x, y, 3, 3);
+      //   ctx.restore();
+      // }
+
       function findClosestCircle() {
         if (!existingCircles.length) {
           // return { x: canvas.width/2, y: canvas.height/2 };
@@ -563,11 +622,11 @@
       }
 
       function createCircle() {
-        var lifetime = randFromTo(10, 30);
+        var lifetime = randFromTo(10, 50);
         // Type 1: bad
         var type = BAD;
 
-        if (randFromTo(0, 100) > 80) {
+        if (randFromTo(0, 100) > 70) {
           // Type 2: good
           type = GOOD;
         }
@@ -606,20 +665,52 @@
         for (var i = 0; i < existingCircles.length; i++) {
           // Doesn't seem to work well
           // TODO: debug collisions
-          if (existingCircles[i].x > vehicle.x && existingCircles[i].x < vehicle.x + vehicle.width &&
-            existingCircles[i].y > vehicle.y && existingCircles[i].y < vehicle.y + vehicle.height
-            ) {
-            // console.log('test');
-            // debugger;
-            if (existingCircles[i].type === GOOD) {
-              vehicle.collidedWithGood += 1;
-            }
-            if (existingCircles[i].type === BAD) {
-              vehicle.collidedWithBad += 1;
-            }
-            existingCircles.splice(i, 1);
+          // if (existingCircles[i].x > vehicle.x && existingCircles[i].x < vehicle.x + vehicle.width &&
+          //   existingCircles[i].y > vehicle.y && existingCircles[i].y < vehicle.y + vehicle.height
+          //   ) {
+          //   // console.log('test');
+          //   // debugger;
+          //   if (existingCircles[i].type === GOOD) {
+          //     vehicle.collidedWithGood += 1;
+          //   }
+          //   if (existingCircles[i].type === BAD) {
+          //     vehicle.collidedWithBad += 1;
+          //   }
+          //   existingCircles.splice(i, 1);
+          // }
+
+          var currCircle = existingCircles[i];
+          if (rectCircleColliding(currCircle, vehicle)) {
+              if (existingCircles[i].type === GOOD) {
+                vehicle.collidedWithGood += 1;
+              }
+              if (existingCircles[i].type === BAD) {
+                vehicle.collidedWithBad += 1;
+              }
+              existingCircles.splice(i, 1);
           }
         }
+      }
+
+      function rectCircleColliding(circle, rect) {
+        var halfWidth = rect.width / 2;
+        var halfHeight = rect.height / 2;
+          var distX = Math.abs(circle.x - rect.x - halfWidth);
+          var distY = Math.abs(circle.y - rect.y - halfHeight);
+
+          if (distX > (halfWidth + circle.radius)) { return false; }
+          if (distY > (halfHeight + circle.radius)) { return false; }
+
+          if (distX <= (halfWidth)) { return true; } 
+          if (distY <= (halfHeight)) { return true; }
+
+          var dx=distX-halfWidth;
+          var dy=distY-halfHeight;
+          return (dx*dx+dy*dy<=(circle.radius*circle.radius));
+      }
+
+      function circleToCircleColliding(c1, c2) {
+
       }
 
       function truncateSpeed() {
