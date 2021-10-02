@@ -19,7 +19,7 @@
       var oldTimeStamp;
       var fps;
 
-      var DEBUG_MODE = true;
+      var DEBUG_MODE = false;
 
       // Obstacle avoidance params
       var MIN_DETECTION_BOX_LEN = 40;
@@ -82,11 +82,11 @@
 
         // DEBUG MODE
         if (DEBUG_MODE) {
-          vehicle.x = canvas.width/2;
+          vehicle.x = canvas.width/2 - 300;
           vehicle.y = canvas.height/2;
           existingCircles.push({
             x: canvas.width/2 + 40,
-            y: canvas.height/2 - 20,
+            y: canvas.height/2 - 21,
             lifetime: 1000,
             tStart: 0,
             radius: 10,
@@ -94,7 +94,7 @@
           });
           existingCircles.push({
             x: canvas.width/2 + 40,
-            y: canvas.height/2 + 20,
+            y: canvas.height/2 + 21,
             lifetime: 1000,
             tStart: 0,
             radius: 10,
@@ -155,7 +155,7 @@
           drawDetectionBox();
         // }
         drawCircles(ts);
-        // collisionDetection();
+        collisionDetection();
       }
 
       // Vehicle physics
@@ -301,8 +301,8 @@
         var steeringForce = { x: null, y: null };
 
         if (closestIntersectionObstacle) {
-          // The closer to an obstacle, the stronger the steering force
-          var multiplier = 1 + (detectionBoxLen - localPosOfCIB.x) / detectionBoxLen;
+          // The closer to an obstacle, the stronger the steering force (1 + ...) by default
+          var multiplier = 2 + (detectionBoxLen - localPosOfCIB.x) / detectionBoxLen;
 
           // Calculate the lateral force
           steeringForce.y = (closestIntersectionObstacle.radius - localPosOfCIB.y) * multiplier;
@@ -525,9 +525,10 @@
         ctx.fillRect(-10, -10, DETECTION_BOX_LEN, 2*vehicle.radius);
         // ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-        ctx.fillStyle = "rgba(250, 150, 150, 0.3)";
-        ctx.fillRect(-10, -10, vehicle.width, vehicle.height);
+        // ctx.fillStyle = "rgba(250, 150, 150, 0.3)";
+        // ctx.fillRect(-10, -10, vehicle.width, vehicle.height);
         ctx.restore();
+        drawCircle(vehicle.x, vehicle.y, 2, '#abc');
       }
 
       function drawCircle(x, y, type, c) {
@@ -562,9 +563,8 @@
           // The current implementation uses "Static" time? (runs at different speed on different computers) ?
           // https://developer.ibm.com/tutorials/wa-build2dphysicsengine/
           if (ts - currCircle.tStart <= currCircle.lifetime) {
-            var color = '#000';
             if(currCircle.isIntersect) {
-              color = '#fff666';
+              var color = '#fff666';
             }
             drawCircle(currCircle.x, currCircle.y, currCircle.type, color);
           } else {
@@ -621,7 +621,7 @@
         return result;
       }
 
-      function createCircle() {
+      function createCircle(t, xc, yc) {
         var lifetime = randFromTo(10, 50);
         // Type 1: bad
         var type = BAD;
@@ -631,8 +631,12 @@
           type = GOOD;
         }
 
-        var x = randFromTo(circleRadius, canvas.width - circleRadius);
-        var y = randFromTo(circleRadius, canvas.height - circleRadius);
+        if (t) {
+          type = t;
+        }
+
+        var x = xc || randFromTo(circleRadius, canvas.width - circleRadius);
+        var y = yc || randFromTo(circleRadius, canvas.height - circleRadius);
         return {
           lifetime: lifetime,
           type: type,
@@ -680,14 +684,16 @@
           // }
 
           var currCircle = existingCircles[i];
-          if (rectCircleColliding(currCircle, vehicle)) {
-              if (existingCircles[i].type === GOOD) {
-                vehicle.collidedWithGood += 1;
-              }
-              if (existingCircles[i].type === BAD) {
-                vehicle.collidedWithBad += 1;
-              }
-              existingCircles.splice(i, 1);
+          // if (rectCircleColliding(currCircle, vehicle)) {
+          if (circleToCircleColliding(vehicle, currCircle)) {
+            if (existingCircles[i].type === GOOD) {
+              vehicle.collidedWithGood += 1;
+            }
+            if (existingCircles[i].type === BAD) {
+            console.log("Collided");
+              vehicle.collidedWithBad += 1;
+            }
+            existingCircles.splice(i, 1);
           }
         }
       }
@@ -710,7 +716,12 @@
       }
 
       function circleToCircleColliding(c1, c2) {
-
+        var diffX = Math.abs(c2.x - c1.x);
+        var diffY = Math.abs(c2.y - c1.y);
+        var dist = Math.sqrt(diffX * diffX + diffY * diffY);
+        var delta = -0.8;
+        var radiusSum = c1.radius + c2.radius + delta;
+        return (dist <= radiusSum);
       }
 
       function truncateSpeed() {
@@ -721,6 +732,14 @@
         }
       }
       // end Helper
+
+      // On click
+      window.addEventListener('click', function(e) {
+        // debugger;
+        console.log(`x: ${e.x}, y: ${e.y}`)
+        existingCircles.push(createCircle(BAD, e.x, e.y));
+      });
+      //
     </script>
   </body>
 </html>
