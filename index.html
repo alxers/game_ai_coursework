@@ -5,10 +5,16 @@
     <title></title>
     <style type="text/css">
       canvas { border: 1px solid black; }
+      .debug-btn {
+        position: relative;
+        top: -20px;
+        height: 50px;
+      }
     </style>
   </head>
   <body">
     <canvas id="ai" width="800" height="200"></canvas>
+    <button class="debug-btn">Turn <b>off</b> DEBUG mode</button>
     <script type="text/javascript">
       //https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript/Finishing_up
 
@@ -19,7 +25,7 @@
       var oldTimeStamp;
       var fps;
 
-      var DEBUG_MODE = false;
+      var DEBUG_MODE = true;
 
       // Obstacle avoidance params
       var MIN_DETECTION_BOX_LEN = 40;
@@ -33,6 +39,7 @@
       var existingCircles = [];
       var BAD = 1;
       var GOOD = 2;
+      var AT_LEAST_ONE_GOOD = false;
       // end Circles variables
 
       // Vehicle object
@@ -53,7 +60,9 @@
         mass: 1,
         // TODO: 150 in the book (check why it doesn't try to avoid when maxSpeed increases)
         maxSpeed: 50,
-        maxForce: 4,
+        maxAcceleration: 50,
+        // maxForce: 4,
+        // force: 5,
         rotation: 0,
         // Approximate radius for obstacle avoidance
         radius: 10,
@@ -81,7 +90,7 @@
         }
 
         // DEBUG MODE
-        if (DEBUG_MODE) {
+        // if (DEBUG_MODE) {
           vehicle.x = canvas.width/2 - 300;
           vehicle.y = canvas.height/2;
           existingCircles.push({
@@ -116,7 +125,7 @@
           //   radius: 10,
           //   type: GOOD
           // });
-        }
+        // }
         // END DEBUG MODE
 
         // Request an animation frame for the first time
@@ -203,8 +212,9 @@
         vehicle.velocity.x += vehicle.acceleration.x * ts;
         vehicle.velocity.y += vehicle.acceleration.y * ts;
         // // Truncate to maxSpeed if needed;
+        // commented out for now (doesn't seem that it was ever truncated)
         // truncateSpeed();
-        // updatePos();
+        truncateAcceleration();
         // Update position
         vehicle.x += vehicle.velocity.x * ts;
         vehicle.y += vehicle.velocity.y * ts;
@@ -548,14 +558,23 @@
       }
 
       function drawCircles(ts) {
-        if (randFromTo(0, 1000) > 993 && existingCircles.length < maxCircles && !DEBUG_MODE) {
-          existingCircles.push(createCircle());
+        // randFromTo(0, 1000) > 993
+        if (randFromTo(0, 1000) > 987 && existingCircles.length < maxCircles && !DEBUG_MODE) {
+          if (AT_LEAST_ONE_GOOD) {
+            existingCircles.push(createCircle());
+          } else {
+            existingCircles.push(createCircle(GOOD));
+          }
         }
+        AT_LEAST_ONE_GOOD = false;
 
         var circleIndexesToRemove = [];
 
         for (var i = 0; i < existingCircles.length; i++) {
           var currCircle = existingCircles[i];
+          if (currCircle.type === GOOD) {
+            AT_LEAST_ONE_GOOD = true;
+          }
           currCircle.tStart ||= ts;
           // TODO: check if this works correcly (count seconds for one circle)
           // another option is to have "secondsPassed" and
@@ -622,7 +641,7 @@
       }
 
       function createCircle(t, xc, yc) {
-        var lifetime = randFromTo(10, 50);
+        var lifetime = 20 + randFromTo(10, 50);
         // Type 1: bad
         var type = BAD;
 
@@ -726,19 +745,31 @@
 
       function truncateSpeed() {
         if (vecLength(vehicle.velocity.x, vehicle.velocity.y) > vehicle.maxSpeed) {
+          console.log("Speed truncated");
           var normalized = normalize(vehicle.velocity.x, vehicle.velocity.y);
           vehicle.velocity.x = normalized.x * vehicle.maxSpeed;
           vehicle.velocity.y = normalized.y * vehicle.maxSpeed;
         }
       }
+
+      function truncateAcceleration() {
+        var currAcc = vecLength(vehicle.acceleration.x, vehicle.acceleration.y);
+        if (currAcc > vehicle.maxAcceleration) {
+          console.log("Acceleration truncated", currAcc);
+          // var normalized = normalize(vehicle.acceleration.x, vehicle.acceleration.y);
+          // vehicle.acceleration.x = normalized.x * vehicle.maxSpeed;
+          // vehicle.acceleration.y = normalized.y * vehicle.maxSpeed;
+        }
+      }
       // end Helper
 
       // On click
-      window.addEventListener('click', function(e) {
-        // debugger;
-        console.log(`x: ${e.x}, y: ${e.y}`)
+      document.addEventListener('click', function(e) {
+        console.log(`x: ${e.x}, y: ${e.y}`);
         existingCircles.push(createCircle(BAD, e.x, e.y));
       });
+
+      var debugBtn = document.querySelector('debug-btn');
       //
     </script>
   </body>
