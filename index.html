@@ -28,7 +28,7 @@
       var DEBUG_MODE = true;
 
       // Obstacle avoidance params
-      var MIN_DETECTION_BOX_LEN = 40;
+      var MIN_DETECTION_BOX_LEN = 40; // 40 by default
       // Used for debugging
       var DETECTION_BOX_LEN = 0;
       var AGENT_HEADING = { x: 0, y: 0 };
@@ -89,44 +89,92 @@
           vehicle.y = randFromTo(20, canvas.height - 20);
         }
 
-        // DEBUG MODE
-        // if (DEBUG_MODE) {
-          vehicle.x = canvas.width/2 - 300;
-          vehicle.y = canvas.height/2;
-          existingCircles.push({
-            x: canvas.width/2 + 40,
-            y: canvas.height/2 - 21,
-            lifetime: 1000,
-            tStart: 0,
-            radius: 10,
-            type: BAD
-          });
-          existingCircles.push({
-            x: canvas.width/2 + 40,
-            y: canvas.height/2 + 21,
-            lifetime: 1000,
-            tStart: 0,
-            radius: 10,
-            type: BAD
-          });
-          existingCircles.push({
-            x: canvas.width/2 + 200,
-            y: canvas.height/2,
-            lifetime: 1000,
-            tStart: 0,
-            radius: 10,
-            type: GOOD
-          });
-          // existingCircles.push({
-          //   x: canvas.width/2 - 163,
-          //   y: canvas.height/2 - 16,
-          //   lifetime: 1000,
-          //   tStart: 0,
-          //   radius: 10,
-          //   type: GOOD
-          // });
-        // }
-        // END DEBUG MODE
+
+        // vehicle.x = canvas.width/2 - 300;
+        vehicle.x = 41;
+        vehicle.y = 24;
+        existingCircles.push({
+          x: 109,
+          y: 28,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        existingCircles.push({
+          x: 125,
+          y: 63,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        existingCircles.push({
+          x: 140,
+          y: 97,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        existingCircles.push({
+          x: 86,
+          y: 24,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        existingCircles.push({
+          x: 158,
+          y: 156,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        // Second row
+        existingCircles.push({
+          x: 228,
+          y: 137,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        existingCircles.push({
+          x: 270,
+          y: 100,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        existingCircles.push({
+          x: 305,
+          y: 113,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+        existingCircles.push({
+          x: 307,
+          y: 131,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: BAD
+        });
+
+        existingCircles.push({
+          x: canvas.width/2 + 100,
+          y: canvas.height/2,
+          lifetime: 1000,
+          tStart: 0,
+          radius: 10,
+          type: GOOD
+        });
 
         // Request an animation frame for the first time
         // The gameLoop() function will be called as a callback of this request
@@ -214,7 +262,7 @@
         // // Truncate to maxSpeed if needed;
         // commented out for now (doesn't seem that it was ever truncated)
         // truncateSpeed();
-        truncateAcceleration();
+        // truncateAcceleration();
         // Update position
         vehicle.x += vehicle.velocity.x * ts;
         vehicle.y += vehicle.velocity.y * ts;
@@ -262,7 +310,7 @@
         for (var i = 0; i < existingCircles.length; i++) {
           var currOb = existingCircles[i];
           currOb.isIntersect = false;
-          if (true) {
+          if (currOb.isTagged) {
             // Calculate this obstacle position in local space
             var localPos = pointToLocalSpace(currOb, agentHeading, agentSide, agentPos);
             // If local position has negative value,
@@ -316,9 +364,8 @@
 
           // Calculate the lateral force
           steeringForce.y = (closestIntersectionObstacle.radius - localPosOfCIB.y) * multiplier;
-          // Apply breaking force
-          var breakingWeight = 0.2;
-          // var breakingWeight = 2.2;
+          // Apply breaking force (0.2 by default)
+          var breakingWeight = 0.4;
           steeringForce.x = (closestIntersectionObstacle.radius - localPosOfCIB.x) * breakingWeight;
         }
 
@@ -527,10 +574,16 @@
         // var angle = Math.atan2(AGENT_HEADING.y, AGENT_HEADING.x);
         // ctx.rotate(45 * Math.PI / 180);
         // drawPoint(vehicle.x, vehicle.y);
+        var clr = 'rgba(61, 48, 48, 0.1)';
+
+        if (DEBUG_MODE) {
+          drawCircle(vehicle, '#abc');
+          clr = 'rgba(61, 48, 48, 0.5)';
+        }
         ctx.save();
         ctx.translate(vehicle.x, vehicle.y);
         ctx.rotate(vehicle.rotation);
-        ctx.fillStyle = "rgba(61, 48, 48, 0.5)";
+        ctx.fillStyle = clr;
         // ctx.fillRect(0, 0, vehicle.radius, DETECTION_BOX_LEN);
         ctx.fillRect(-10, -10, DETECTION_BOX_LEN, 2*vehicle.radius);
         // ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -538,20 +591,19 @@
         // ctx.fillStyle = "rgba(250, 150, 150, 0.3)";
         // ctx.fillRect(-10, -10, vehicle.width, vehicle.height);
         ctx.restore();
-        drawCircle(vehicle.x, vehicle.y, 2, '#abc');
       }
 
-      function drawCircle(x, y, type, c) {
+      function drawCircle(circle, clr) {
         var color = '#880000';
-        if (type == 2) {
+        if (circle.type == GOOD) {
           color = '#0095DD';
         }
 
         ctx.beginPath();
-        ctx.arc(x, y, circleRadius, 0, Math.PI*2);
+        ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI*2);
         ctx.fillStyle = color;
         if (DEBUG_MODE) {
-          ctx.fillStyle = c;
+          ctx.fillStyle = clr;
         }
         ctx.fill();
         ctx.closePath();
@@ -561,7 +613,8 @@
         // randFromTo(0, 1000) > 993
         if (randFromTo(0, 1000) > 987 && existingCircles.length < maxCircles && !DEBUG_MODE) {
           if (AT_LEAST_ONE_GOOD) {
-            existingCircles.push(createCircle());
+            var r = randFromTo(8, 18);
+            existingCircles.push(createCircle(null, r));
           } else {
             existingCircles.push(createCircle(GOOD));
           }
@@ -582,10 +635,10 @@
           // The current implementation uses "Static" time? (runs at different speed on different computers) ?
           // https://developer.ibm.com/tutorials/wa-build2dphysicsengine/
           if (ts - currCircle.tStart <= currCircle.lifetime) {
-            if(currCircle.isIntersect) {
-              var color = '#fff666';
-            }
-            drawCircle(currCircle.x, currCircle.y, currCircle.type, color);
+            // if(currCircle.isIntersect) {
+            //   var color = '#fff666';
+            // }
+            drawCircle(currCircle);
           } else {
             circleIndexesToRemove.push(i);
           }
@@ -640,7 +693,7 @@
         return result;
       }
 
-      function createCircle(t, xc, yc) {
+      function createCircle(t, radius, xc, yc) {
         var lifetime = 20 + randFromTo(10, 50);
         // Type 1: bad
         var type = BAD;
@@ -654,8 +707,12 @@
           type = t;
         }
 
-        var x = xc || randFromTo(circleRadius, canvas.width - circleRadius);
-        var y = yc || randFromTo(circleRadius, canvas.height - circleRadius);
+        if (!radius) {
+          radius = randFromTo(8, 18);
+        }
+
+        var x = xc || randFromTo(radius, canvas.width - radius);
+        var y = yc || randFromTo(radius, canvas.height - radius);
         return {
           lifetime: lifetime,
           type: type,
@@ -665,7 +722,7 @@
           x: x,
           y: y,
           // Used in obstacle avoidance
-          radius: circleRadius,
+          radius: radius,
           isTagged: false
         }
       }
@@ -745,7 +802,7 @@
 
       function truncateSpeed() {
         if (vecLength(vehicle.velocity.x, vehicle.velocity.y) > vehicle.maxSpeed) {
-          console.log("Speed truncated");
+          // console.log("Speed truncated");
           var normalized = normalize(vehicle.velocity.x, vehicle.velocity.y);
           vehicle.velocity.x = normalized.x * vehicle.maxSpeed;
           vehicle.velocity.y = normalized.y * vehicle.maxSpeed;
@@ -755,21 +812,32 @@
       function truncateAcceleration() {
         var currAcc = vecLength(vehicle.acceleration.x, vehicle.acceleration.y);
         if (currAcc > vehicle.maxAcceleration) {
-          console.log("Acceleration truncated", currAcc);
-          // var normalized = normalize(vehicle.acceleration.x, vehicle.acceleration.y);
-          // vehicle.acceleration.x = normalized.x * vehicle.maxSpeed;
-          // vehicle.acceleration.y = normalized.y * vehicle.maxSpeed;
+          // console.log("Acceleration truncated", currAcc);
+          var normalized = normalize(vehicle.acceleration.x, vehicle.acceleration.y);
+          vehicle.acceleration.x = normalized.x * vehicle.maxSpeed;
+          vehicle.acceleration.y = normalized.y * vehicle.maxSpeed;
         }
       }
       // end Helper
 
       // On click
       document.addEventListener('click', function(e) {
-        console.log(`x: ${e.x}, y: ${e.y}`);
-        existingCircles.push(createCircle(BAD, e.x, e.y));
-      });
+        if (!e.target) {
+          return;
+        }
 
-      var debugBtn = document.querySelector('debug-btn');
+        // If clicked on canvas
+        if (e.target.id === 'ai') {
+          console.log(`x: ${e.x}, y: ${e.y}`);
+          existingCircles.push(createCircle(BAD, 10, e.x, e.y));
+        }
+
+        if (e.target.className === 'debug-btn') {
+          DEBUG_MODE = false;
+          e.target.innerText = "Random mode";
+          e.target.disabled = true;
+        }
+      });
       //
     </script>
   </body>
